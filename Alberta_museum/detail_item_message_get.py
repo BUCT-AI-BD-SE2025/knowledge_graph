@@ -2,6 +2,7 @@ import requests
 from bs4 import BeautifulSoup
 import json
 import time
+import csv
 
 
 def detail_message_get(all_item_urls, museum_name="ualberta"):
@@ -60,10 +61,43 @@ def detail_message_get(all_item_urls, museum_name="ualberta"):
         time.sleep(0.3)
 
     # 步骤3：将数据保存到JSON文件
-    with open(f'{museum_name}_chinese_artifacts.json', 'w', encoding='utf-8') as f:
-        json.dump(all_artifacts, f, ensure_ascii=False, indent=4)
+      # 提取所有可能的字段名称（包括url和images）
+    fieldnames = ['url', 'images']
+    details_fields = set()
 
-    print("爬取完成。数据已保存到 'chinese_artifacts.json'。")
+    # 收集所有details中的字段名称
+    for artifact in all_artifacts[:2]:
+        details_fields.update(artifact['details'].keys())
+    # 补充属性表
+    details_fields.update(all_artifacts[3]['details'].keys())
+    # 合并字段名称（保持url和images在前）
+    fieldnames += sorted(details_fields)  # 也可以去掉sorted保持自然顺序
+
+    # 写入CSV文件
+    skipped_count = 0
+    with open(f'{museum_name}_chinese_artifacts.csv', 'w', newline='', encoding='utf-8') as f:
+        writer = csv.DictWriter(f, fieldnames=fieldnames)
+        writer.writeheader()
+
+        for artifact in all_artifacts:
+            # 创建基础行数据
+            try:
+                row = {
+                    'url': artifact['url'],
+                    'images': artifact.get('images', '')  # 处理可能的缺失字段
+                }
+                # 添加details字段
+                row.update(artifact['details'])
+                if not row.keys() <= set(fieldnames):
+                    raise KeyError("包含未知字段")
+                writer.writerow(row)
+            except KeyError as e:
+                print(f"跳过物品 {artifact['url']}，原因: {str(e)}")
+                skipped_count += 1
+                continue
+    print(
+        f"爬取完成。成功保存 {len(all_artifacts)-skipped_count} 条记录，跳过 {skipped_count} 条异常记录。")
+    print(f"爬取完成。数据已保存到 '{museum_name}_chinese_artifacts.csv'。")
 
 
 if __name__ == "__main__":
