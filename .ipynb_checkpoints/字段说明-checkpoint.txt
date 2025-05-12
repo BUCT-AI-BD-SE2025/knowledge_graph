@@ -1,6 +1,0 @@
-字段说明:
-title: 文物标题
-date: 文物时代
-accession_number：馆藏号
-credit_line：来源
-image_download_url: 原图下载链接
